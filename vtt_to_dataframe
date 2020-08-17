@@ -1,0 +1,64 @@
+###############################################################
+#
+#
+# Convert .vtt -> .txt -> dataframe (appropriate for ELAN)
+#
+# MC 8/17/20
+#
+###############################################################
+library(stringr)
+
+cd = "Directory/files/"
+setwd(cd)
+
+# Open .vtt file
+
+dat = read.delim("transcript.vtt", header = TRUE)
+
+# Initialize dataframe 
+nrows = length(dat$WEBVTT)
+df = as.data.frame(matrix(data = NA, nrow = nrows, ncol = 1))
+df["speaker"] = NA
+df["blank_col2"] = NA
+df["start_time"] = NA
+df["end_time"] = NA
+df["text"] = NA
+
+# Loop through rows 
+turn_counter = 0
+for(r in 1:nrows){
+  curr_row = as.character(dat$WEBVTT[r])
+  timing_row = grepl("*-->*", curr_row)
+  
+  if(timing_row == TRUE){
+    turn_counter = turn_counter + 1
+    timing_info_adjustment = 0
+    speaker_and_text_adjustment = 1
+    
+    # Col 1 = speaker (Before colon)
+    curr_speaker = as.character(dat$WEBVTT[r+speaker_and_text_adjustment])
+ #   data_matrix[turn_counter,1] = str_extract(curr_speaker, ".+?:")
+    df$speaker[turn_counter] = str_extract(curr_speaker, ".*(?=:)")
+    
+    # Col 2 = blank
+    # Col 3 = start time (Get value before -->)
+    df$start_time[turn_counter] = str_extract(curr_row, ".*(?= -->)")
+    
+    # Col 4 = end (Get value after -->)
+    df$end_time[turn_counter] = str_extract(curr_row, "(?<=--> ).*")
+    
+    # Col 5 = text (Get values after : in speaker)
+    curr_text = str_extract(curr_speaker, "(?<=: ).*")
+    if(is.na(curr_text) == FALSE){
+      if(curr_text != "Recording"){
+        df$text[turn_counter] = curr_text
+      } #endif record text
+    } #endif isn't na
+
+  }# 
+  
+}#endfor
+
+
+
+
