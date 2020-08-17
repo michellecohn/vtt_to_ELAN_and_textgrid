@@ -132,8 +132,9 @@ df = subset(df, (text != "NA"))
 
 
 # Write to .txt file
-write.table(df, "202_transcript.txt", sep = "\t", dec = ".",
+write.table(df, "202_transcript.txt", sep = "\t", dec = ".", quote = FALSE,
             row.names = FALSE, col.names = TRUE)
+
 
 
 
