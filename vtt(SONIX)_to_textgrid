@@ -1,0 +1,179 @@
+###############################################################
+#
+#
+# Convert .vtt -> Praat textgrid; export command --> chop up in ffmpeg
+#
+# MC 2/11/2022; updated 12/9/2022 (For Sonix)
+#
+###############################################################
+
+options(digits.secs = 3) 
+
+library(stringr)
+library(lubridate)
+library(phonfieldwork)
+
+# If you don't have these packages already, you'll need to install them 
+# before calling them with the library function
+# install.packages("stringr")
+# install.packages("lubridate")
+
+# CHANGE YOUR WORKING DIRECTORY (point it to where the .vtt file is)
+inputdir = ("/Users/michellecohn/Desktop/vtt/")
+setwd(inputdir)
+outputdir = inputdir
+  
+file_list = list.files(pattern = ".vtt")
+nfiles = length(file_list)
+
+for(ifile in 1:nfiles){
+
+  curr_file = file_list[ifile]
+  outputfilename = sub("vtt", "csv", curr_file) # DEFINE OUTPUT FILENAME
+  
+  # Open .vtt file (UPDATE WITH YOUR FILENAME)
+  dat = read.delim(curr_file, header = TRUE)
+
+  # Find all instances of timing
+  dat$WEBVTT = as.character(dat$WEBVTT)
+  turn_indices =grep("*-->*", dat$WEBVTT )
+  n_turns = length(turn_indices)
+  
+  # Initialize dataframe 
+  df = as.data.frame(matrix(data = NA, nrow = n_turns, ncol = 1))
+  df["full_turn_info"] = NA
+  df["speaker"] = NA
+  df["start_time"] = NA
+  df["end_time"] = NA
+
+  # Loop over rows
+  for(iturn in 1:n_turns){
+    turn_start_index = turn_indices[iturn]
+    
+    if(iturn == n_turns){
+      turn_end_index = length(dat$WEBVTT)
+      
+      
+    } else {
+      next_turn_start = turn_indices[iturn + 1]
+      turn_end_index = next_turn_start - 1
+      
+    }#endif
+      
+    # Extract curr turn
+    current_full_turn = dat$WEBVTT[turn_start_index:turn_end_index]
+    df$full_turn_info[iturn] = paste(current_full_turn, collapse = ", ")
+    
+    start_time = str_extract(current_full_turn[1], ".*(?= -->)")
+    df$start_time[iturn] = start_time
+    
+    end_time = str_extract(current_full_turn[1], "(?<=--> ).*")
+    df$end_time[iturn] = end_time
+    
+    # Clean up string without start/end time
+    curr_text_string =  current_full_turn[-c(1)]
+      
+      
+    # Check if there's a "Speaker :" in there...
+    has_speaker_index = grep("Speaker[[:digit:]]:", current_full_turn)
+    
+    if(length(has_speaker_index) != 0){
+      df$speaker[iturn] = current_full_turn[has_speaker_index]
+      curr_text_string =  curr_text_string[-c(1)]
+      
+    }#endif
+    
+
+    curr_text = paste(curr_text_string, collapse = ",")
+    df$curr_text[iturn] = curr_text
+    
+    }#endfor
+  
+  
+  # Clean up end of curr text... if it's a , then a number  
+  df$curr_text_cleaned = gsub(",[[:digit:]]+", "", df$curr_text)
+  
+  # Remove first column (placeholder)
+  df = df[,-1]
+  
+  
+  output_txt_path = sprintf("%s%s", outputdir, outputfilename)
+  
+  write.csv(df, output_txt_path)
+  
+  
+}#endfor
+
+
+
+
+######################## RUN BELOW TO GENERATE TEXTGRIDS FROM .CSV #########
+# Can be run independently from above code!
+
+
+inputdir = ("/Users/michellecohn/Desktop/vtt/")
+setwd(inputdir)
+outputdir = inputdir
+
+csv_list = list.files(pattern = ".csv")
+nfiles = length(csv_list)
+
+for(ifile in 1:nfiles){
+  curr_file = csv_list[ifile]
+  outputfilename = sub("csv", "TextGrid", curr_file) # DEFINE OUTPUT FILENAME
+  
+  curr_csv = read.csv(curr_file, header = TRUE)
+  
+  # Total duration
+  dur = max(curr_csv$end_time)
+
+  curr_csv$content = curr_csv$curr_text_cleaned
+  
+  curr_csv$time_start = strptime(curr_csv$start_time, format = "%H:%M:%S")
+  curr_hour = hour(curr_csv$time_start)
+  curr_minute = minute(curr_csv$time_start)
+  curr_second = second(curr_csv$time_start)
+
+  # Convert to seconds
+  curr_time_in_seconds = curr_hour*360 + curr_minute*60 + curr_second
+  curr_csv$time_start = curr_time_in_seconds
+  
+  curr_csv$time_end = strptime(curr_csv$end_time, format = "%H:%M:%S")
+  curr_hour_end = hour(curr_csv$time_end)
+  curr_minute_end = minute(curr_csv$time_end)
+  curr_second_end = second(curr_csv$time_end)
+  
+  # Convert to seconds
+  curr_end_time_in_seconds = curr_hour_end*360 + curr_minute_end*60 + curr_second_end
+  curr_csv$time_end = curr_end_time_in_seconds
+  
+  total_duration = max(curr_csv$time_end)
+
+  
+  # initialize textgrid
+  output_tg_path = sprintf("%s%s", outputdir, outputfilename)
+  
+  create_empty_textgrid(total_duration, path =outputdir, result_file_name = outputfilename)
+  
+  output_to_textgrid = curr_csv[,(c("content", "time_start", "time_end"))]
+  df_to_tier(output_to_textgrid, output_tg_path, tier_name = "FromVTT", overwrite = TRUE) # add info to 
+
+  # Add an empty tier for errors / notes
+  output_to_textgrid$content = ""
+  df_to_tier(output_to_textgrid, output_tg_path, tier_name = "Notes", overwrite = TRUE) # add info to 
+  
+
+}#endfor
+
+
+
+
+
+  
+
+
+
+
+
+  
+  
