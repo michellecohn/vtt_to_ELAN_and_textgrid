@@ -11,7 +11,6 @@ options(digits.secs = 3)
 
 library(stringr)
 library(lubridate)
-library(datetime)
 library(phonfieldwork)
 
 # If you don't have these packages already, you'll need to install them 
@@ -110,7 +109,9 @@ for(ifile in 1:nfiles){
 
 ######################## RUN BELOW TO GENERATE TEXTGRIDS FROM .CSV #########
 # Can be run independently from above code!
-
+library(stringr)
+library(lubridate)
+library(phonfieldwork)
 
 inputdir = ("/Users/michellecohn/Desktop/vtt/")
 setwd(inputdir)
