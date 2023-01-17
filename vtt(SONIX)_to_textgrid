@@ -1,7 +1,7 @@
 ###############################################################
 #
 #
-# Convert .vtt -> Praat textgrid; export command --> chop up in ffmpeg
+# Convert .vtt -> Praat textgrid
 #
 # MC 2/11/2022; updated 1/17/2023
 #
